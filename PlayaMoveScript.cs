@@ -6,13 +6,26 @@ using UnityEngine;
 public class PlayaMoveScript: MonoBehaviour
 {
     public bool canMove { get; private set; } = true;
+    private bool isSprinting => canSprint && Input.GetKey(sprintKey);
+    private bool shouldJump => Input.GetKeyDown(jumpKey) && characterController.isGrounded;
 
-    //declaring adjustable variables for character behavior
+
+    [Header("Functional Options")]
+    [SerializeField] private bool canSprint = true;
+    [SerializeField] private bool canJump = true;
+
+    [Header("Controls")]
+    [SerializeField] private KeyCode sprintKey = KeyCode.LeftShift;
+    [SerializeField] private KeyCode jumpKey = KeyCode.Space;
+
     [Header("Movement Parameters")]
     [SerializeField] private float walkSpeed = 3.0f;
+    [SerializeField] private float sprintSpeed = 6.0f;
+    
+    [Header("Jump Settings")]
+    [SerializeField] private float jumpForce = 8.0f;
     [SerializeField] private float gravity = 30.0f;
 
-    //look sensitivity and range of motion for look controls
     [Header("Look Parameters")]
     [SerializeField, Range(1, 10)] private float lookSpeedX = 2.0f;
     [SerializeField, Range(1, 10)] private float lookSpeedY = 2.0f;
@@ -31,12 +44,27 @@ public class PlayaMoveScript: MonoBehaviour
 
     private void HandleMovmementInput()
     {
-        //used GetAxisRaw instead of GetAxis to make inputs feel more responsive
-        currentInput = new Vector2(walkSpeed * Input.GetAxisRaw("Vertical"), walkSpeed * Input.GetAxisRaw("Horizontal"));
+        
+        currentInput = new Vector2((isSprinting ? sprintSpeed : walkSpeed) * Input.GetAxisRaw("Vertical"), (isSprinting ? sprintSpeed : walkSpeed) * Input.GetAxisRaw("Horizontal"));
 
         float moveDirectionY = moveDirection.y;
-        moveDirection = (transform.TransformDirection(Vector3.forward) * currentInput.x) + (transform.TransformDirection(Vector3.right) * currentInput.y);
+        if (currentInput.x != 0 && currentInput.y != 0)
+        {
+            moveDirection = (transform.TransformDirection(Vector3.forward) * currentInput.x * 0.7071f) + (transform.TransformDirection(Vector3.right) * currentInput.y * 0.7071f);
+        }
+        else
+        {
+            moveDirection = (transform.TransformDirection(Vector3.forward) * currentInput.x) + (transform.TransformDirection(Vector3.right) * currentInput.y);
+        }
         moveDirection.y = moveDirectionY;
+    }
+
+    private void HandleJump()
+    {
+        if(shouldJump)
+        {
+            moveDirection.y = jumpForce;
+        }
     }
 
     private void HandleMouseLook()
@@ -71,7 +99,12 @@ public class PlayaMoveScript: MonoBehaviour
         if (canMove)
         {
             HandleMovmementInput();
+            if(canJump)
+            {
+                HandleJump();
+            }
             HandleMouseLook();
+            
             ApplyFinalMovements();
         }
     }
